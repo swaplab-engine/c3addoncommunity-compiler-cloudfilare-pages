@@ -54,6 +54,10 @@ This repository is deployed using **Cloudflare Pages** for maximum availability 
 - **Real-time Synchronization:** Fetches live data from GitHub API.
 - **Automated Cleanup:** Temporary build files are purged automatically from the bridge server.
 
+
+<img width="1179" height="693" alt="c3addon-community" src="https://github.com/user-attachments/assets/0617df62-64c0-4e89-b292-e9bee932dd1a" />
+
+
 ---
 
 ## 🤝 Contribution & Feedback
