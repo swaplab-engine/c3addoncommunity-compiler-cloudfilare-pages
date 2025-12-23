@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C3Addon Compiler | Pro Dashboard</title>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles/dashboard.css">
+    <style>
+        
+    </style>
+</head>
+<body>
+
+<div class="info-bar">
+    <div>
+        Realtime Builder Core by <a href="https://github.com/EMIINDO?tab=repositories" target="_blank">EMIINDO</a>
+    </div>
+    <div>
+        <a href="https://www.construct.net/en/forum/construct-3/plugin-sdk-10/porting-list-addon-sdk-v2-185208" target="_blank">SDK v2 Docs</a> | 
+        <a href="https://www.construct.net/en/make-games/addons" target="_blank">Official Addons</a>
+    </div>
+</div>
+
+<div class="container">
+    <div class="dashboard-header">
+        <div>
+            <h1 style="font-weight: 800; font-size: 2.5rem; margin:0;">Cloud <span style="color:var(--accent)">Compiler</span></h1>
+            <p style="color:var(--text-dim); margin-top:5px;">Automated SDK v2 Distribution System</p>
+        </div>
+        <div class="stat-card">
+            <h2 id="projectCount">...</h2>
+            <label>Live Repositories</label>
+        </div>
+    </div>
+
+    <div class="controls">
+        <div class="search-wrapper">
+            <i data-lucide="search"></i>
+            <input type="text" id="repoSearch" class="search-input" placeholder="Search addon by name...">
+        </div>
+        <button onclick="fetchData()" class="btn-refresh">
+            <i data-lucide="rotate-cw"></i>
+        </button>
+    </div>
+
+    <div id="loading" class="loader">Synchronizing Repository Data...</div>
+    <div id="repoGrid" class="addon-grid"></div>
+</div>
+
+<script>
+
+
+
+
+    const swapLabAPI = 'https://c3addoncommunity-api.swaplab.net';
+
+
+    let allRepos = [];
+
+    function safeRefreshIcons() {
+        try {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        } catch (e) { console.warn("Lucide icons not ready."); }
+    }
+
+    async function fetchData() {
+        const grid = document.getElementById('repoGrid');
+        const loader = document.getElementById('loading');
+        const countSpan = document.getElementById('projectCount');
+        
+        loader.style.display = 'block';
+        try {
+            const res = await fetch(`${swapLabAPI}/api/list-repos`);
+            const data = await res.json();
+            if (Array.isArray(data)) {
+                allRepos = data;
+                countSpan.innerText = allRepos.length;
+                renderRepos(allRepos);
+                loader.style.display = 'none';
+            }
+        } catch (e) {
+            loader.innerHTML = `<span style="color: #ff4d4d;">Engine Offline</span>`;
+        }
+    }
+
+    function renderRepos(repos) {
+    const grid = document.getElementById('repoGrid');
+    grid.innerHTML = '';
+    
+    repos.forEach(repo => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        
+        const addonSource = 'https://www.construct.net/en/make-games/addons';
+        const description = repo.description ? repo.description : `Source: <a href="${addonSource}" target="_blank" style="color:var(--accent); text-decoration:none;">${addonSource}</a>`;
+
+        card.innerHTML = `
+            <div class="card-body">
+                <h3 class="card-title">${repo.name}</h3>
+                <p class="card-desc">${description}</p>
+                <div class="meta">
+                    <span><i data-lucide="calendar" style="width:12px"></i> Updated: ${new Date(repo.updated).toLocaleDateString()}</span>
+                </div>
+            </div>
+            <div class="card-actions">
+                <button id="btn-${repo.name}" class="btn btn-build" onclick="handleBuild('${repo.name}')">
+                    <i data-lucide="layers"></i> COMPILE
+                </button>
+                <a id="dl-${repo.name}" class="btn btn-download" href="#" target="_blank">
+                    <i data-lucide="download"></i> GET .C3ADDON
+                </a>
+            </div>
+        `;
+        grid.appendChild(card);
+    });
+    safeRefreshIcons();
+}
+
+    async function handleBuild(repoName) {
+        const btn = document.getElementById(`btn-${repoName}`);
+        const dl = document.getElementById(`dl-${repoName}`);
+        
+        // UI State: Loading
+        btn.disabled = true;
+        const originalHTML = btn.innerHTML;
+        btn.innerHTML = `<i data-lucide="refresh-cw" style="animation: spin 2s linear infinite"></i> BUILDING...`;
+        safeRefreshIcons();
+
+        try {
+            const response = await fetch(`${swapLabAPI}/api/create-addon`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ repoName: repoName })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                btn.style.display = 'none';
+                dl.style.display = 'flex';
+                dl.href = result.downloadUrl;
+                console.log("Build Success:", repoName);
+            } else {
+                throw new Error(result.error || "Unknown Error");
+            }
+        } catch (error) {
+            console.error("Build Error:", error);
+            alert("Compile Failed: " + error.message);
+            btn.disabled = false;
+            btn.innerHTML = originalHTML;
+        } finally {
+            safeRefreshIcons();
+        }
+    }
+
+
+    document.getElementById('repoSearch').addEventListener('input', (e) => {
+        const keyword = e.target.value.toLowerCase();
+        renderRepos(allRepos.filter(r => r.name.toLowerCase().includes(keyword)));
+    });
+
+    window.onload = fetchData;
+</script>
+
+</body>
+</html>
